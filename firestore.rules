@@ -10,6 +10,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Colleges listing - Publicly readable
+    match /colleges/{collegeId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     function isCounselor() {
       return isSignedIn() && exists(/databases/$(database)/documents/counselors/$(request.auth.uid));
     }
@@ -24,6 +30,14 @@ service cloud.firestore {
 
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Allow counselors to access all appointments and documents via collectionGroup
+    match /{path=**}/appointments/{appointmentId} {
+      allow list: if isCounselor();
+    }
+    match /{path=**}/documents/{docId} {
+      allow list: if isCounselor();
     }
 
     // User profiles
@@ -64,12 +78,6 @@ service cloud.firestore {
       allow list, get: if isSignedIn();
       // Only admins (to be defined/manual) or system can write here
       allow write: if false; 
-    }
-
-    // Colleges listing
-    match /colleges/{collegeId} {
-      allow list, get: if true; // Publicly readable college data
-      allow write: if false; // Only manageable via console or specialized scripts
     }
   }
 }

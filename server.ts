@@ -113,14 +113,20 @@ async function startServer() {
   // Function to refresh colleges from Firestore
   const fetchColleges = async () => {
     try {
+      console.log(`Attempting to fetch colleges from DB: ${firebaseConfig.firestoreDatabaseId || '(default)'}`);
       const querySnapshot = await getDocs(collection(db, "colleges"));
       const freshColleges = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       if (freshColleges.length > 0) {
         colleges = freshColleges;
-        console.log(`Loaded ${colleges.length} colleges from Firestore`);
+        console.log(`Successfully loaded ${colleges.length} colleges from Firestore`);
+      } else {
+        console.log("Firestore collection 'colleges' is empty.");
       }
-    } catch (error) {
-      console.error("Error fetching colleges from Firestore, using local fallback:", error);
+    } catch (error: any) {
+      console.error("Error fetching colleges from Firestore, using local fallback:");
+      console.error("Error Code:", error?.code);
+      console.error("Error Message:", error?.message);
+      console.error("Full Error:", JSON.stringify(error));
     }
   };
 
