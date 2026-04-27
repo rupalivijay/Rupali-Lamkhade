@@ -33,7 +33,7 @@ export default function Documents() {
           setUserDocs(docsData);
           setLoading(false);
         }, (err) => {
-            console.error(err);
+            console.warn("Document snapshot stream closed (often due to idle timeout):", err.message);
             setLoading(false);
         });
         return () => unsubDocs();

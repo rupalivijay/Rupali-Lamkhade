@@ -51,6 +51,8 @@ export interface College {
     tuition: number;
     hostel: number;
   };
+  nirfRanking?: number;
+  description?: string;
   historicalTrends?: {
     [key in Category]?: HistoricalData[];
   };

@@ -24,6 +24,8 @@ export default function OnlineGuidance() {
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setAppointments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.warn("Appointments snapshot stream closed/error:", error.message);
     });
     return () => unsubscribe();
   }, [auth.currentUser]);

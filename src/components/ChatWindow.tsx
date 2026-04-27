@@ -23,11 +23,12 @@ export default function ChatWindow({ userId, userName, role }: ChatWindowProps) 
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({
+      setMessages(snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })) as Message[];
-      setMessages(msgs);
+      })) as Message[]);
+    }, (error) => {
+      console.warn("Chat snapshot stream closed/error (standard idle timeout often causes this):", error.message);
     });
 
     return () => unsubscribe();

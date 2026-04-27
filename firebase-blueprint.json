@@ -86,6 +86,8 @@
         "cutoffRank": { "type": "object" },
         "link": { "type": "string" },
         "fees": { "type": "object" },
+        "nirfRanking": { "type": "integer" },
+        "description": { "type": "string" },
         "historicalTrends": { "type": "object" }
       },
       "required": ["name", "state", "city", "examType", "type", "quota", "cutoffRank"]

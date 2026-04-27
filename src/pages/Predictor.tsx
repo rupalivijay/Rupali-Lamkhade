@@ -22,9 +22,54 @@ export default function Predictor() {
   const [selectedForCompare, setSelectedForCompare] = React.useState<College[]>([]);
   const [showComparison, setShowComparison] = React.useState(false);
   const [expandedTrends, setExpandedTrends] = React.useState<string | null>(null);
+  const [quickMatchData, setQuickMatchData] = React.useState({
+    rank: '',
+    category: Category.GENERAL,
+    examType: ExamType.NEET
+  });
   const [quickMatchResult, setQuickMatchResult] = React.useState<string | null>(null);
   const [rankError, setRankError] = React.useState<string | null>(null);
   const [quickMatchError, setQuickMatchError] = React.useState<string | null>(null);
+
+  const calculateQuickMatch = (rank: string, category: string, exam: string) => {
+    if (!rank) {
+      setQuickMatchResult(null);
+      setQuickMatchError(null);
+      return;
+    }
+    const r = parseFloat(rank);
+    if (isNaN(r) || r <= 0) {
+      setQuickMatchError("Invalid rank");
+      setQuickMatchResult(null);
+      return;
+    }
+
+    setQuickMatchError(null);
+    let result = "";
+
+    const isCET = exam === ExamType.CET_PCM || exam === ExamType.CET_PCB;
+
+    if (isCET) {
+      // Percentile logic
+      if (r >= 99.5) result = "Elite (Tier 1)";
+      else if (r >= 98) result = "Premier (Tier 2)";
+      else if (r >= 95) result = "Solid (Tier 3)";
+      else result = "Average (Tier 4)";
+    } else {
+      // Rank logic (lower is better)
+      let adjustedRank = r;
+      // Simple adjustment for categories
+      if (category === Category.OBC) adjustedRank *= 0.8;
+      if (category === Category.SC) adjustedRank *= 0.5;
+      if (category === Category.ST) adjustedRank *= 0.3;
+
+      if (adjustedRank < 1000) result = "Elite (Top IITs / AIIMS)";
+      else if (adjustedRank < 5000) result = "Premier (Top NITs / State Gov)";
+      else if (adjustedRank < 20000) result = "Solid (Good NIRF Govt Colleges)";
+      else result = "Average (Semi-Gov / Private)";
+    }
+    setQuickMatchResult(result);
+  };
 
   const toggleTrends = (id: string) => {
     setExpandedTrends(expandedTrends === id ? null : id);
@@ -247,63 +292,79 @@ export default function Predictor() {
           <Zap className="h-32 w-32" />
         </div>
         
-        <div className="relative z-10 grid md:grid-cols-3 gap-8 items-center">
-          <div className="md:col-span-1">
+        <div className="relative z-10 space-y-8">
+          <div>
             <div className="inline-flex items-center space-x-2 bg-white/10 px-3 py-1 rounded-full mb-4">
               <Sparkles className="h-4 w-4 text-orange-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">Quick Match</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">Instant Estimate</span>
             </div>
-            <h2 className="text-2xl font-black mb-2">Broad Range Predictor</h2>
-            <p className="text-slate-400 text-sm">Get an instant overview of your potential tier before diving into details.</p>
+            <h2 className="text-2xl font-black mb-2">Quick Prediction Engine</h2>
+            <p className="text-slate-400 text-sm">Get an instant overview of your potential tier before diving into detail analytics.</p>
           </div>
           
-          <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Current Rank (Expected)</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Exam Type</label>
+              <select 
+                value={quickMatchData.examType}
+                onChange={(e) => {
+                  const newExam = e.target.value as ExamType;
+                  setQuickMatchData(prev => ({ ...prev, examType: newExam }));
+                  calculateQuickMatch(quickMatchData.rank, quickMatchData.category, newExam);
+                }}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-blue-500 transition appearance-none cursor-pointer"
+              >
+                {exams.map(e => <option key={e} value={e} className="bg-slate-900">{e}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Category</label>
+              <select 
+                value={quickMatchData.category}
+                onChange={(e) => {
+                  const newCat = e.target.value as Category;
+                  setQuickMatchData(prev => ({ ...prev, category: newCat }));
+                  calculateQuickMatch(quickMatchData.rank, newCat, quickMatchData.examType);
+                }}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-blue-500 transition appearance-none cursor-pointer"
+              >
+                {categories.map(c => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Rank / Percentile</label>
               <input 
                 type="number"
-                placeholder="Enter rank..."
+                placeholder="Enter score..."
+                value={quickMatchData.rank}
                 className={cn(
-                  "w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold focus:ring-2 focus:ring-orange-500 transition",
+                  "w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white font-bold focus:ring-2 focus:ring-orange-500 transition",
                   quickMatchError && "border-red-500 focus:ring-red-500"
                 )}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (!val) {
-                    setQuickMatchResult(null);
-                    setQuickMatchError(null);
-                    return;
-                  }
-                  const r = parseFloat(val);
-                  if (isNaN(r) || r <= 0) {
-                    setQuickMatchError("Invalid rank");
-                    setQuickMatchResult(null);
-                    return;
-                  }
-                  
-                  setQuickMatchError(null);
-                  if (r < 1000) setQuickMatchResult("Elite Institutions (Tier 1)");
-                  else if (r < 5000) setQuickMatchResult("Premier State Colleges (Tier 2)");
-                  else if (r < 20000) setQuickMatchResult("Solid Government Institutions (Tier 3)");
-                  else setQuickMatchResult("Private/Semi-Gov Institutions (Tier 4)");
+                  setQuickMatchData(prev => ({ ...prev, rank: val }));
+                  calculateQuickMatch(val, quickMatchData.category, quickMatchData.examType);
                 }}
               />
               {quickMatchError && <p className="text-red-400 text-[10px] font-bold mt-1 ml-1">{quickMatchError}</p>}
             </div>
             
             <div className="flex flex-col justify-end">
-              <div className="bg-white/5 rounded-2xl p-4 border border-white/10 h-full flex flex-col justify-center min-h-[80px]">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Potential Category Match</p>
+              <div className="bg-white/5 rounded-2xl p-4 border border-white/10 h-full flex flex-col justify-center min-h-[64px]">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Likely Institution Tier</p>
                 <div className="flex items-center space-x-2">
                   <div className={cn(
                     "h-2 w-2 rounded-full",
-                    quickMatchResult ? "bg-orange-500 animate-pulse" : "bg-slate-700"
+                    quickMatchResult ? "bg-emerald-500 animate-pulse" : "bg-slate-700"
                   )} />
                   <span className={cn(
                     "font-black transition-all",
-                    quickMatchResult ? "text-white text-lg" : "text-slate-600 text-sm italic"
+                    quickMatchResult ? "text-emerald-400 text-lg" : "text-slate-600 text-sm italic"
                   )}>
-                    {quickMatchResult || "Enter rank for analysis..."}
+                    {quickMatchResult || "Enter data..."}
                   </span>
                 </div>
               </div>
@@ -400,12 +461,24 @@ export default function Predictor() {
                       <Award className="h-8 w-8 text-blue-600" />
                     </div>
                     <div className="flex-1 pr-12">
-                      <h3 className="text-xl font-black text-slate-900 leading-tight mb-1">{college.name}</h3>
-                      <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-xl font-black text-slate-900 leading-tight">{college.name}</h3>
+                        {college.nirfRanking && (
+                          <span className="inline-flex items-center bg-orange-50 text-orange-600 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border border-orange-100">
+                            NIRF #{college.nirfRanking}
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-2">
                         <p className="text-sm text-slate-500 font-medium flex items-center">
                           <MapPin className="h-3.5 w-3.5 mr-1 text-slate-400" />
                           {college.city}, {college.state}
                         </p>
+                        {college.description && (
+                          <p className="text-xs text-slate-500 leading-relaxed italic line-clamp-2">
+                            {college.description}
+                          </p>
+                        )}
                         {college.link && (
                           <a 
                             href={college.link} 
@@ -709,10 +782,26 @@ export default function Predictor() {
                                         {selectedForCompare.map(college => (
                                             <td key={college.id} className="p-6 border-b border-slate-50 font-black text-slate-900 text-base">
                                                 {college.cutoffRank[cat].toLocaleString()}
+                                                {(college.examType === ExamType.CET_PCM || college.examType === ExamType.CET_PCB) && "%"}
                                             </td>
                                         ))}
                                     </tr>
                                 ))}
+                                <tr>
+                                    <td className="p-6 font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">NIRF Ranking</td>
+                                    {selectedForCompare.map(college => (
+                                        <td key={college.id} className="p-6 border-b border-slate-50">
+                                            {college.nirfRanking ? (
+                                                <div className="flex items-center space-x-2">
+                                                    <Award className="h-5 w-5 text-orange-500" />
+                                                    <span className="text-lg font-black text-slate-900">#{college.nirfRanking}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-slate-400 font-bold italic">N/A</span>
+                                            )}
+                                        </td>
+                                    ))}
+                                </tr>
                                 <tr>
                                     <td className="p-6 font-bold text-slate-400 uppercase tracking-widest bg-slate-50/50">Tuition Fee</td>
                                     {selectedForCompare.map(college => (

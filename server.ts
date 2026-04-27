@@ -29,6 +29,8 @@ async function startServer() {
       id: "1", name: "AIIMS Delhi", state: "Delhi", city: "New Delhi", examType: "NEET", type: "Medical", quota: "All India Quota", 
       cutoffRank: { General: 50, OBC: 200, SC: 500, ST: 1000, EWS: 150 }, 
       link: "https://www.aiims.edu/", fees: { tuition: 1628, hostel: 4226 },
+      nirfRanking: 1,
+      description: "India's premier medical research university and hospital, consistently ranked #1 since NIRF's inception.",
       historicalTrends: {
         General: [{ year: 2021, rank: 45 }, { year: 2022, rank: 48 }, { year: 2023, rank: 52 }, { year: 2024, rank: 50 }, { year: 2025, rank: 55 }],
         OBC: [{ year: 2021, rank: 180 }, { year: 2022, rank: 195 }, { year: 2023, rank: 210 }, { year: 2024, rank: 200 }, { year: 2025, rank: 215 }]
@@ -54,6 +56,8 @@ async function startServer() {
       id: "4", name: "IIT Bombay", state: "Maharashtra", city: "Mumbai", examType: "JEE", type: "Engineering", quota: "All India Quota", 
       cutoffRank: { General: 60, OBC: 300, SC: 600, ST: 1200, EWS: 180 }, 
       link: "https://www.iitb.ac.in/", fees: { tuition: 211000, hostel: 25000 },
+      nirfRanking: 3,
+      description: "Renowned globally for its engineering and science programs, located in the heart of Mumbai.",
       historicalTrends: {
         General: [{ year: 2021, rank: 55 }, { year: 2022, rank: 58 }, { year: 2023, rank: 62 }, { year: 2024, rank: 60 }, { year: 2025, rank: 65 }]
       }
@@ -83,7 +87,10 @@ async function startServer() {
     },
     { 
       id: "9", name: "IIT Madras", state: "Tamil Nadu", city: "Chennai", examType: "JEE", type: "Engineering", quota: "All India Quota", 
-      cutoffRank: { General: 150, OBC: 500, SC: 1100, ST: 2200, EWS: 350 }, link: "https://www.iitm.ac.in/", fees: { tuition: 215000, hostel: 24000 } 
+      cutoffRank: { General: 150, OBC: 500, SC: 1100, ST: 2200, EWS: 350 }, 
+      link: "https://www.iitm.ac.in/", fees: { tuition: 215000, hostel: 24000 },
+      nirfRanking: 1,
+      description: "Consistent top performer in engineering with a strong focus on research and industrial collaboration."
     },
     { 
       id: "10", name: "NIT Trichy", state: "Tamil Nadu", city: "Tiruchirappalli", examType: "JEE", type: "Engineering", quota: "State Quota", 
