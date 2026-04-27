@@ -1,5 +1,6 @@
 import React from 'react';
-import { Navbar, Footer } from '../components';
+import Navbar from './Navbar';
+import Footer from './Footer';
 import { Outlet } from 'react-router-dom';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';

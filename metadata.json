@@ -1,6 +1,6 @@
 {
-  "name": "Laxmi Educational Predictor",
-  "description": "A comprehensive Medical and Engineering counseling consultancy platform featuring a college predictor engine for NEET, JEE, and State CETs, document vault, and real-time schedule tracking.",
+  "name": "Laxmi Educational",
+  "description": "Expert AI-powered counseling for NEET, JEE & CET admissions.",
   "requestFramePermissions": [
     "camera",
     "microphone"

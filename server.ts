@@ -130,14 +130,8 @@ async function startServer() {
     }
   };
 
-  // Initial fetch
-  await fetchColleges();
-
   // API Endpoints
   app.post("/api/predict", async (req, res) => {
-    // Optionally re-fetch or use cached
-    // await fetchColleges(); 
-    
     const { rank, category, domicile, examType, quota } = req.body;
     
     const results = colleges.filter(college => {
@@ -158,7 +152,6 @@ async function startServer() {
     res.json(results);
   });
 
-
   // Vite middleware
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -175,6 +168,8 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
+    // Start initial fetch in background after server starts
+    fetchColleges().catch(err => console.error("Background initial fetch failed:", err));
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

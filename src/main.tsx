@@ -13,6 +13,7 @@ import AboutCounselor from './pages/AboutCounselor';
 import OnlineGuidance from './pages/OnlineGuidance';
 import './index.css';
 
+console.log("Laxmi Educational: Initializing React App...");
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
