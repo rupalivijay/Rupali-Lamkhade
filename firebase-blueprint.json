@@ -71,6 +71,24 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["studentId", "date", "time", "status"]
+    },
+    "college": {
+      "title": "College Information",
+      "description": "Data about educational institutions for prediction",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "state": { "type": "string" },
+        "city": { "type": "string" },
+        "examType": { "type": "string", "enum": ["NEET", "JEE", "CET-PCM", "CET-PCB"] },
+        "type": { "type": "string", "enum": ["Medical", "Engineering"] },
+        "quota": { "type": "string", "enum": ["All India Quota", "State Quota"] },
+        "cutoffRank": { "type": "object" },
+        "link": { "type": "string" },
+        "fees": { "type": "object" },
+        "historicalTrends": { "type": "object" }
+      },
+      "required": ["name", "state", "city", "examType", "type", "quota", "cutoffRank"]
     }
   },
   "firestore": {
@@ -93,6 +111,10 @@
     "users/{userId}/appointments/{appointmentId}": {
       "schema": "appointment",
       "description": "Individual counseling appointments"
+    },
+    "colleges/{collegeId}": {
+      "schema": "college",
+      "description": "Master database of colleges and cutoffs"
     }
   }
 }

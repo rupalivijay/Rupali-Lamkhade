@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, MapPin, Award, CheckCircle2, FileDown, Filter, GitCompare, X, Eye, TrendingUp } from 'lucide-react';
+import { Search, MapPin, Award, CheckCircle2, FileDown, Filter, GitCompare, X, Eye, TrendingUp, Zap, Sparkles } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { categories, exams, states, quotas, exportToExcel } from '../constants';
 import { College, ExamType, Category, QuotaType } from '../types';
@@ -16,11 +16,15 @@ export default function Predictor() {
   });
   const [results, setResults] = React.useState<College[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [hasSearched, setHasSearched] = React.useState(false);
   const [filterType, setFilterType] = React.useState<'All' | 'Medical' | 'Engineering'>('All');
   const [filterQuota, setFilterQuota] = React.useState<'All' | QuotaType>('All');
   const [selectedForCompare, setSelectedForCompare] = React.useState<College[]>([]);
   const [showComparison, setShowComparison] = React.useState(false);
   const [expandedTrends, setExpandedTrends] = React.useState<string | null>(null);
+  const [quickMatchResult, setQuickMatchResult] = React.useState<string | null>(null);
+  const [rankError, setRankError] = React.useState<string | null>(null);
+  const [quickMatchError, setQuickMatchError] = React.useState<string | null>(null);
 
   const toggleTrends = (id: string) => {
     setExpandedTrends(expandedTrends === id ? null : id);
@@ -37,8 +41,18 @@ export default function Predictor() {
     });
   };
 
+  const resultsRef = React.useRef<HTMLDivElement>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const rankVal = parseFloat(formData.rank);
+    if (isNaN(rankVal) || rankVal <= 0) {
+      setRankError("Please enter a valid positive rank/percentile");
+      return;
+    }
+    setRankError(null);
+
     setLoading(true);
     try {
       const response = await fetch('/api/predict', {
@@ -46,11 +60,17 @@ export default function Predictor() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          rank: parseInt(formData.rank)
+          rank: parseFloat(formData.rank)
         }),
       });
       const data = await response.json();
       setResults(data);
+      setHasSearched(true);
+
+      // Scroll to results after a brief delay for state update
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     } catch (err) {
       console.error(err);
     } finally {
@@ -90,23 +110,28 @@ export default function Predictor() {
       <div className="text-center mb-12">
         <h1 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">College Predictor 2026</h1>
         <p className="text-slate-600 max-w-2xl mx-auto">
-          Get precise recommendations based on historical cutoff data for NEET and JEE. Our smart engine analyzes AIQ and State quota rankings.
+          Get precise recommendations based on historical cutoff data for NEET, JEE, and CET. Our smart engine analyzes AIQ and State quota rankings.
         </p>
       </div>
 
       <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <div className="p-8 md:p-12">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-2">
+            <div className="md:col-span-2 space-y-2">
               <label className="text-sm font-semibold text-slate-700 ml-1">Entrance Exam</label>
-              <div className="flex bg-slate-100 p-1 rounded-xl">
+              <div className="grid grid-cols-2 md:grid-cols-4 bg-slate-100 p-1 rounded-xl gap-1">
                 {exams.map((exam) => (
                   <button
                     key={exam}
                     type="button"
-                    onClick={() => setFormData({ ...formData, examType: exam })}
+                    onClick={() => {
+                      const newQuota = (exam === ExamType.CET_PCM || exam === ExamType.CET_PCB) 
+                        ? QuotaType.STATE 
+                        : formData.quota;
+                      setFormData({ ...formData, examType: exam, quota: newQuota });
+                    }}
                     className={cn(
-                      "flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all",
+                      "py-3 px-4 rounded-lg text-sm font-bold transition-all",
                       formData.examType === exam ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700"
                     )}
                   >
@@ -123,10 +148,12 @@ export default function Predictor() {
                   <button
                     key={quota}
                     type="button"
+                    disabled={(formData.examType === ExamType.CET_PCM || formData.examType === ExamType.CET_PCB) && quota === QuotaType.AIQ}
                     onClick={() => setFormData({ ...formData, quota: quota })}
                     className={cn(
                       "flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all",
-                      formData.quota === quota ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700"
+                      formData.quota === quota ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700",
+                      (formData.examType === ExamType.CET_PCM || formData.examType === ExamType.CET_PCB) && quota === QuotaType.AIQ && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     {quota}
@@ -136,18 +163,29 @@ export default function Predictor() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Rank (AIR)</label>
+              <label className="text-sm font-semibold text-slate-700 ml-1">
+                {(formData.examType === ExamType.CET_PCM || formData.examType === ExamType.CET_PCB) ? "CET Percentile / Score (%)" : "All India Rank (AIR)"}
+              </label>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                 <input
                   type="number"
-                  placeholder="Enter your rank"
+                  step="any"
+                  placeholder={(formData.examType === ExamType.CET_PCM || formData.examType === ExamType.CET_PCB) ? "e.g., 98.5" : "e.g., 12500"}
                   value={formData.rank}
-                  onChange={(e) => setFormData({ ...formData, rank: e.target.value })}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, rank: val });
+                    if (val && parseFloat(val) > 0) setRankError(null);
+                  }}
+                  className={cn(
+                    "w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition",
+                    rankError && "border-red-500 focus:ring-red-500"
+                  )}
                   required
                 />
               </div>
+              {rankError && <p className="text-red-500 text-xs font-bold mt-1 ml-1">{rankError}</p>}
             </div>
 
             <div className="space-y-2">
@@ -180,20 +218,106 @@ export default function Predictor() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 transition shadow-lg shadow-blue-200 disabled:opacity-50"
+                className={cn(
+                  "w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-lg transition shadow-lg shadow-blue-200 flex items-center justify-center space-x-3",
+                  loading ? "opacity-70 cursor-not-allowed" : "hover:bg-blue-700 active:scale-[0.98]"
+                )}
               >
-                {loading ? "Analyzing..." : "Find Colleges"}
+                {loading ? (
+                  <>
+                    <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Analyzing...</span>
+                  </>
+                ) : (
+                  <span>Find Eligible Colleges</span>
+                )}
               </button>
             </div>
           </form>
         </div>
       </div>
 
-      {results.length > 0 && (
+      {/* Quick Range Predictor */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mt-12 bg-gradient-to-br from-slate-900 to-slate-800 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden"
+      >
+        <div className="absolute top-0 right-0 p-8 opacity-10">
+          <Zap className="h-32 w-32" />
+        </div>
+        
+        <div className="relative z-10 grid md:grid-cols-3 gap-8 items-center">
+          <div className="md:col-span-1">
+            <div className="inline-flex items-center space-x-2 bg-white/10 px-3 py-1 rounded-full mb-4">
+              <Sparkles className="h-4 w-4 text-orange-400" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">Quick Match</span>
+            </div>
+            <h2 className="text-2xl font-black mb-2">Broad Range Predictor</h2>
+            <p className="text-slate-400 text-sm">Get an instant overview of your potential tier before diving into details.</p>
+          </div>
+          
+          <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Current Rank (Expected)</label>
+              <input 
+                type="number"
+                placeholder="Enter rank..."
+                className={cn(
+                  "w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold focus:ring-2 focus:ring-orange-500 transition",
+                  quickMatchError && "border-red-500 focus:ring-red-500"
+                )}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val) {
+                    setQuickMatchResult(null);
+                    setQuickMatchError(null);
+                    return;
+                  }
+                  const r = parseFloat(val);
+                  if (isNaN(r) || r <= 0) {
+                    setQuickMatchError("Invalid rank");
+                    setQuickMatchResult(null);
+                    return;
+                  }
+                  
+                  setQuickMatchError(null);
+                  if (r < 1000) setQuickMatchResult("Elite Institutions (Tier 1)");
+                  else if (r < 5000) setQuickMatchResult("Premier State Colleges (Tier 2)");
+                  else if (r < 20000) setQuickMatchResult("Solid Government Institutions (Tier 3)");
+                  else setQuickMatchResult("Private/Semi-Gov Institutions (Tier 4)");
+                }}
+              />
+              {quickMatchError && <p className="text-red-400 text-[10px] font-bold mt-1 ml-1">{quickMatchError}</p>}
+            </div>
+            
+            <div className="flex flex-col justify-end">
+              <div className="bg-white/5 rounded-2xl p-4 border border-white/10 h-full flex flex-col justify-center min-h-[80px]">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Potential Category Match</p>
+                <div className="flex items-center space-x-2">
+                  <div className={cn(
+                    "h-2 w-2 rounded-full",
+                    quickMatchResult ? "bg-orange-500 animate-pulse" : "bg-slate-700"
+                  )} />
+                  <span className={cn(
+                    "font-black transition-all",
+                    quickMatchResult ? "text-white text-lg" : "text-slate-600 text-sm italic"
+                  )}>
+                    {quickMatchResult || "Enter rank for analysis..."}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {hasSearched && (
         <motion.div
+          ref={resultsRef}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-16 space-y-8"
+          className="mt-16 space-y-8 scroll-mt-24"
         >
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex flex-col space-y-4">
@@ -276,32 +400,48 @@ export default function Predictor() {
                       <Award className="h-8 w-8 text-blue-600" />
                     </div>
                     <div className="flex-1 pr-12">
-                      <h3 className="text-xl font-black text-slate-900 leading-tight mb-2">{college.name}</h3>
-                      <p className="text-sm text-slate-500 flex items-center mb-3">
-                        <MapPin className="h-4 w-4 mr-1.5" />
-                        {college.city}, {college.state}
-                      </p>
-                      {college.link && (
-                        <a 
-                          href={college.link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-xs font-bold text-blue-600 hover:underline flex items-center w-fit"
-                        >
-                          Official College Website
-                        </a>
-                      )}
+                      <h3 className="text-xl font-black text-slate-900 leading-tight mb-1">{college.name}</h3>
+                      <div className="space-y-1">
+                        <p className="text-sm text-slate-500 font-medium flex items-center">
+                          <MapPin className="h-3.5 w-3.5 mr-1 text-slate-400" />
+                          {college.city}, {college.state}
+                        </p>
+                        {college.link && (
+                          <a 
+                            href={college.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700 transition flex items-center w-fit gap-1"
+                          >
+                            <span>Visit Official Website</span>
+                            <Eye className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="pt-6 border-t border-slate-100">
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Historical Cutoff Ranks</h4>
-                    <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
-                      {Object.entries(college.cutoffRank).map(([cat, rank]) => (
-                        <div key={cat} className="flex flex-col">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">{cat}</span>
-                          <span className="text-sm font-black text-slate-900">
-                            {rank.toLocaleString()}
+                  <div className="pt-6 border-t border-slate-100 bg-slate-50/50 -mx-8 px-8 pb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                        {(college.examType === ExamType.CET_PCM || college.examType === ExamType.CET_PCB) ? "Cutoff Percentile" : "Cutoff Ranks"}
+                      </h4>
+                      <div className="h-px flex-1 mx-4 bg-slate-100" />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-y-4 gap-x-2">
+                      {Object.values(Category).map((cat) => (
+                        <div key={cat} className="flex flex-col p-2 rounded-xl bg-white border border-slate-100 shadow-[0_2px_4px_rgba(0,0,0,0.02)]">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">{cat}</span>
+                          <span className={cn(
+                            "text-xs font-black",
+                            formData.category === cat ? "text-blue-600" : "text-slate-900"
+                          )}>
+                            {college.cutoffRank[cat] ? (
+                              <>
+                                {college.cutoffRank[cat].toLocaleString()}
+                                {(college.examType === ExamType.CET_PCM || college.examType === ExamType.CET_PCB) && "%"}
+                              </>
+                            ) : "N/A"}
                           </span>
                         </div>
                       ))}
@@ -310,25 +450,25 @@ export default function Predictor() {
 
                   <div className="pt-6 border-t border-slate-100">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Estimated Fees (Annual)</h4>
-                      <span className="text-[10px] text-slate-400 italic">*Approximate</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-8">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-1 h-8 bg-blue-500 rounded-full" />
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Tuition Fee</p>
-                          <p className="text-base font-black text-slate-900">₹{college.fees?.tuition.toLocaleString()}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-1 h-8 bg-orange-500 rounded-full" />
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Hostel Fee</p>
-                          <p className="text-base font-black text-slate-900">₹{college.fees?.hostel.toLocaleString()}</p>
-                        </div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Estimated Annual Fees</h4>
+                      <div className="flex items-center space-x-1 bg-amber-50 px-2 py-0.5 rounded text-[9px] font-bold text-amber-700 border border-amber-100">
+                        <Sparkles className="h-2 w-2" />
+                        <span>APPROXIMATE</span>
                       </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Tuition Fees</p>
+                        <p className="text-lg font-black text-slate-900">₹{college.fees?.tuition.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Hostel Fees</p>
+                        <p className="text-lg font-black text-slate-900">₹{college.fees?.hostel.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <p className="mt-4 text-[10px] text-slate-400 italic">
+                      Disclaimer: Fees mentioned above are indicative based on previous academic sessions. Actual fees may vary.
+                    </p>
                   </div>
 
                   <div className="flex justify-between items-center pt-4">
@@ -389,10 +529,11 @@ export default function Predictor() {
                                 <Tooltip 
                                   content={({ active, payload }) => {
                                     if (active && payload && payload.length) {
+                                      const isCET = college.examType === ExamType.CET_PCM || college.examType === ExamType.CET_PCB;
                                       return (
                                         <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl border border-white/10">
                                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Year {payload[0].payload.year}</p>
-                                          <p className="text-sm font-black">Rank: {payload[0].value?.toLocaleString()}</p>
+                                          <p className="text-sm font-black">{isCET ? 'Percentile' : 'Rank'}: {payload[0].value?.toLocaleString()}{isCET && '%'}</p>
                                         </div>
                                       );
                                     }
@@ -411,7 +552,9 @@ export default function Predictor() {
                             </ResponsiveContainer>
                           </div>
                           <p className="text-[10px] text-slate-400 mt-4 italic">
-                            * Note: Lower rank indicates higher competitiveness. Data based on round-1 results.
+                            {(college.examType === ExamType.CET_PCM || college.examType === ExamType.CET_PCB) 
+                              ? "* Note: Higher percentile indicates higher competitiveness. Data based on merit lists."
+                              : "* Note: Lower rank indicates higher competitiveness. Data based on round-1 results."}
                           </p>
                         </div>
                       </motion.div>
@@ -423,10 +566,22 @@ export default function Predictor() {
           </div>
           
           {filteredResults.length === 0 && (
-            <div className="text-center py-20 bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">
-              <Filter className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-slate-900 mb-2">No Matches Found</h3>
-              <p className="text-slate-500">Try changing your filters (Type: {filterType}, Quota: {filterQuota}) or Rank.</p>
+            <div className="text-center py-24 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+              <div className="bg-white h-24 w-24 rounded-[2rem] shadow-sm flex items-center justify-center mx-auto mb-8 text-slate-300">
+                <Filter className="h-10 w-10" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-4">No matching colleges found</h3>
+              <p className="text-slate-500 max-w-sm mx-auto mb-10 text-lg leading-relaxed">
+                We couldn't find any institutions matching your criteria ({formData.examType}, {formData.category}, rank {formData.rank}). Try broadening your search or checking for data updates.
+              </p>
+              <button 
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-blue-700 transition shadow-xl shadow-blue-100 uppercase tracking-widest text-xs"
+              >
+                Modify Search Criteria
+              </button>
             </div>
           )}
         </motion.div>

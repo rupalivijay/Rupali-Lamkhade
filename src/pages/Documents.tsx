@@ -45,13 +45,19 @@ export default function Documents() {
   }, []);
 
   const [uploading, setUploading] = React.useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = React.useState<Record<string, number>>({});
 
   const handleUpload = async (docName: string) => {
     if (!currentUser) return alert("Please login first.");
     
     setUploading(docName);
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    setUploadProgress(prev => ({ ...prev, [docName]: 0 }));
+
+    // Simulate progress increments
+    for (let i = 0; i <= 100; i += 10) {
+      setUploadProgress(prev => ({ ...prev, [docName]: i }));
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
 
     const docId = docName.replace(/[\s/]+/g, '_').toLowerCase();
     try {
@@ -132,6 +138,21 @@ export default function Documents() {
                             <span className="text-xs text-red-500 font-bold italic">"{status.feedback}"</span>
                         )}
                       </div>
+                  )}
+                  {uploading === docItem.name && (
+                    <div className="mt-3 w-full md:w-64">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-black text-blue-600 uppercase">Uploading...</span>
+                        <span className="text-[10px] font-black text-blue-600">{uploadProgress[docItem.name]}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-blue-50 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${uploadProgress[docItem.name]}%` }}
+                          className="h-full bg-blue-600"
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

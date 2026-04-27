@@ -65,5 +65,11 @@ service cloud.firestore {
       // Only admins (to be defined/manual) or system can write here
       allow write: if false; 
     }
+
+    // Colleges listing
+    match /colleges/{collegeId} {
+      allow list, get: if true; // Publicly readable college data
+      allow write: if false; // Only manageable via console or specialized scripts
+    }
   }
 }

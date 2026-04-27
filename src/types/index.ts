@@ -8,7 +8,9 @@ export enum Category {
 
 export enum ExamType {
   NEET = "NEET",
-  JEE = "JEE"
+  JEE = "JEE",
+  CET_PCM = "CET-PCM",
+  CET_PCB = "CET-PCB"
 }
 
 export enum QuotaType {

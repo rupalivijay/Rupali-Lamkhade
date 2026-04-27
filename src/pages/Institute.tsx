@@ -57,7 +57,7 @@ export default function Institute() {
             <span className="text-blue-600">Counseling Expertise</span>
           </h1>
           <p className="text-lg text-slate-600 mb-10 leading-relaxed">
-            EduCounsel is a premier consultancy dedicated to helping students navigate the complex path to medical and engineering careers. We provide data-driven insights and strategic planning for NEET and JEE aspirants.
+            EduCounsel is a premier consultancy dedicated to helping students navigate the complex path to medical and engineering careers. We provide data-driven insights and strategic planning for NEET, JEE, and CET aspirants.
           </p>
           <div className="grid gap-6 mb-10">
             <ServiceHighlight 

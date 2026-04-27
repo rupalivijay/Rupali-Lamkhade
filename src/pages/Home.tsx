@@ -26,7 +26,7 @@ export default function Home() {
           className="text-6xl lg:text-8xl font-black text-slate-900 mb-8 tracking-tighter leading-[0.9]"
         >
           Expert Guidance for <br />
-          <span className="text-blue-600">NEET & JEE</span> 2026
+          <span className="text-blue-600">NEET, JEE & CET</span> 2026
         </motion.h1>
 
         <motion.p

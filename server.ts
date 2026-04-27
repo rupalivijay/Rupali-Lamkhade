@@ -2,6 +2,17 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
+import fs from "fs";
+
+// Load Firebase Config
+const firebaseConfig = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf8")
+);
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,8 +23,8 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Mock College Data
-  const colleges = [
+  // Local/Fallback College Data
+  let colleges: any[] = [
     { 
       id: "1", name: "AIIMS Delhi", state: "Delhi", city: "New Delhi", examType: "NEET", type: "Medical", quota: "All India Quota", 
       cutoffRank: { General: 50, OBC: 200, SC: 500, ST: 1000, EWS: 150 }, 
@@ -78,10 +89,42 @@ async function startServer() {
       id: "10", name: "NIT Trichy", state: "Tamil Nadu", city: "Tiruchirappalli", examType: "JEE", type: "Engineering", quota: "State Quota", 
       cutoffRank: { General: 5000, OBC: 10000, SC: 15000, ST: 25000, EWS: 6000 }, link: "https://www.nitt.edu/", fees: { tuition: 135000, hostel: 40000 } 
     },
+    { 
+      id: "11", name: "VJTI Mumbai", state: "Maharashtra", city: "Mumbai", examType: "CET-PCM", type: "Engineering", quota: "State Quota", 
+      cutoffRank: { General: 99.8, OBC: 99.2, SC: 98.5, ST: 95.0, EWS: 99.5 }, link: "https://vjti.ac.in/", fees: { tuition: 85000, hostel: 20000 } 
+    },
+    { 
+      id: "12", name: "ICT Mumbai", state: "Maharashtra", city: "Mumbai", examType: "CET-PCM", type: "Engineering", quota: "State Quota", 
+      cutoffRank: { General: 99.5, OBC: 98.8, SC: 97.5, ST: 94.0, EWS: 99.0 }, link: "https://www.ictmumbai.edu.in/", fees: { tuition: 95000, hostel: 25000 } 
+    },
+    { 
+      id: "13", name: "Government College of Pharmacy", state: "Maharashtra", city: "Aurangabad", examType: "CET-PCB", type: "Medical", quota: "State Quota", 
+      cutoffRank: { General: 98.0, OBC: 96.5, SC: 94.0, ST: 90.0, EWS: 97.5 }, link: "https://geca.ac.in/", fees: { tuition: 45000, hostel: 15000 } 
+    },
   ];
 
+  // Function to refresh colleges from Firestore
+  const fetchColleges = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "colleges"));
+      const freshColleges = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (freshColleges.length > 0) {
+        colleges = freshColleges;
+        console.log(`Loaded ${colleges.length} colleges from Firestore`);
+      }
+    } catch (error) {
+      console.error("Error fetching colleges from Firestore, using local fallback:", error);
+    }
+  };
+
+  // Initial fetch
+  await fetchColleges();
+
   // API Endpoints
-  app.post("/api/predict", (req, res) => {
+  app.post("/api/predict", async (req, res) => {
+    // Optionally re-fetch or use cached
+    // await fetchColleges(); 
+    
     const { rank, category, domicile, examType, quota } = req.body;
     
     const results = colleges.filter(college => {
@@ -89,12 +132,19 @@ async function startServer() {
       if (quota === "State Quota" && college.quota === "State Quota" && college.state !== domicile) return false;
       if (quota === "All India Quota" && college.quota !== "All India Quota") return false;
       
-      const cutoff = college.cutoffRank[category as keyof typeof college.cutoffRank];
+      const cutoff = college.cutoffRank?.[category as keyof typeof college.cutoffRank];
+      if (cutoff === undefined) return false;
+      
+      if (examType === "CET-PCM" || examType === "CET-PCB") {
+        return rank >= cutoff;
+      }
+      
       return rank <= cutoff;
     });
 
     res.json(results);
   });
+
 
   // Vite middleware
   if (process.env.NODE_ENV !== "production") {
